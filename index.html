@@ -1,0 +1,1468 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>黄博妙妙屋 · BOBO解谜</title>
+<style>
+  :root{
+    --bg:#15100c; --panel:#241b15; --panel2:#2e231b;
+    --wall:#3a2d24; --wall2:#2c211a; --floor:#4a3627; --floor2:#33261a;
+    --wood:#5d4330; --wood2:#4b3523; --accent:#2a4a4a; --accent2:#1f3838;
+    --gold:#f0c060; --gold2:#ffd36b; --ink:#e9ddc7; --dim:#b3a58f;
+    --danger:#ff5a3c; --good:#7fd07f; --blue:#8fb8ff;
+    --shadow:0 6px 24px rgba(0,0,0,.55);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    background:radial-gradient(1200px 700px at 50% -10%, #2a2019 0%, #120d0a 55%, #0a0705 100%);
+    color:var(--ink);
+    font-family:"Microsoft YaHei","PingFang SC","Segoe UI",sans-serif;
+    display:flex;align-items:center;justify-content:center;
+    min-height:100vh;padding:12px;
+    user-select:none;
+  }
+  #game{
+    width:min(980px,100%);
+    background:var(--panel);
+    border:1px solid #000;
+    border-radius:14px;
+    overflow:hidden;
+    box-shadow:0 18px 60px rgba(0,0,0,.7), 0 0 0 1px rgba(240,192,96,.08);
+  }
+  /* ---------- top bar ---------- */
+  #topbar{
+    display:flex;align-items:center;gap:12px;
+    padding:10px 14px;
+    background:linear-gradient(180deg,#2e231b,#241b15);
+    border-bottom:1px solid #000;
+  }
+  #logo{font-size:18px;font-weight:700;letter-spacing:1px;color:var(--gold);white-space:nowrap;}
+  #roomName{font-size:14px;color:var(--dim);}
+  #treasureCount{font-size:13px;color:var(--gold2);margin-left:auto;white-space:nowrap;}
+  .topbtn{
+    background:var(--panel2);color:var(--ink);border:1px solid #4a3b2e;
+    border-radius:8px;padding:5px 11px;font-size:13px;cursor:pointer;font-family:inherit;
+  }
+  .topbtn:hover{background:#3a2d24;color:#fff;}
+  /* ---------- scene ---------- */
+  #sceneWrap{position:relative;background:#000;}
+  svg#scene{display:block;width:100%;height:auto;background:#17100b;}
+  .hs{cursor:pointer;}
+  .hs .obj{transition:filter .18s ease, transform .18s ease; transform-box:fill-box; transform-origin:center;}
+  .hs:hover .obj{filter:brightness(1.5) drop-shadow(0 0 7px var(--gold2));}
+  .hs.clickable{animation:pulse 1.6s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:.92;}50%{opacity:.62;}}
+  .navbtn{
+    position:absolute;top:50%;transform:translateY(-50%);
+    width:42px;height:64px;border:1px solid #3a2d24;border-radius:10px;
+    background:rgba(24,18,12,.82);color:var(--gold);font-size:22px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;z-index:5;
+  }
+  .navbtn:hover{background:rgba(58,45,36,.95);}
+  .navbtn.left{left:8px;} .navbtn.right{right:8px;} .navbtn.up{left:50%;top:10px;transform:translateX(-50%);width:64px;height:38px;}
+  .navbtn.down{left:50%;top:auto;bottom:10px;transform:translateX(-50%);width:64px;height:38px;}
+  /* ---------- message banner ---------- */
+  #msg{
+    position:absolute;left:50%;bottom:74px;transform:translateX(-50%);
+    max-width:88%;padding:10px 16px;border-radius:10px;text-align:center;font-size:15px;line-height:1.55;
+    background:rgba(20,14,9,.92);border:1px solid rgba(240,192,96,.35);
+    color:var(--ink);box-shadow:var(--shadow);z-index:9;opacity:0;pointer-events:none;
+    transition:opacity .25s ease;
+  }
+  #msg.show{opacity:1;}
+  #msg.warn{border-color:var(--danger);color:#ffd9d0;}
+  #msg.good{border-color:var(--good);color:#d8ffd8;}
+  /* ---------- inventory ---------- */
+  #invBar{
+    display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+    padding:10px 14px;background:linear-gradient(0deg,#1d1610,#241b15);
+    border-top:1px solid #000;min-height:66px;
+  }
+  #invLabel{font-size:12px;color:var(--dim);writing-mode:vertical-lr;letter-spacing:2px;}
+  .slot{
+    position:relative;width:58px;height:52px;border-radius:9px;
+    background:#2b211a;border:1px solid #453526;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;cursor:pointer;transition:.15s;
+  }
+  .slot .ico{font-size:22px;line-height:1;}
+  .slot .ico img{width:34px;height:34px;object-fit:contain;border-radius:4px;}
+  .slot .nm{font-size:9px;color:var(--dim);margin-top:2px;max-width:54px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .slot:hover{border-color:var(--gold);}
+  .slot.selected{border-color:var(--gold2);background:#3a2d22;box-shadow:0 0 10px rgba(240,192,96,.5);}
+  .slot.empty{opacity:.35;cursor:default;}
+  .slot.treasure .nm{color:var(--gold2);}
+  /* ---------- modal ---------- */
+  #modal{
+    position:fixed;inset:0;background:rgba(8,5,3,.86);display:none;
+    align-items:center;justify-content:center;z-index:50;padding:16px;
+  }
+  #modal.open{display:flex;}
+  .card{
+    width:min(560px,100%);max-height:92vh;overflow:auto;
+    background:linear-gradient(180deg,#2e231b,#1f1710);
+    border:1px solid #4a3b2e;border-radius:16px;padding:26px 28px;
+    box-shadow:0 20px 70px rgba(0,0,0,.8);text-align:center;
+  }
+  .card h1{color:var(--gold);margin:0 0 6px;font-size:30px;letter-spacing:3px;}
+  .card h2{color:var(--gold2);margin:0 0 14px;font-size:20px;font-weight:600;}
+  .card p{color:var(--dim);line-height:1.8;font-size:15px;margin:10px 0;}
+  .card .story{color:var(--ink);text-align:left;background:#17100b;border-radius:10px;padding:16px;line-height:2;font-size:14px;}
+  .bigbtn{
+    margin-top:16px;display:inline-block;background:linear-gradient(180deg,#7a5a2e,#5d4320);
+    color:#fff;border:1px solid #a97f3d;border-radius:10px;padding:12px 30px;
+    font-size:17px;font-weight:700;letter-spacing:2px;cursor:pointer;font-family:inherit;
+  }
+  .bigbtn:hover{filter:brightness(1.15);}
+  .bigbtn.gold{background:linear-gradient(180deg,#e0a63c,#b57f22);border-color:#ffd36b;color:#3a2400;}
+  .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:14px;}
+  /* code pad */
+  .codeSlots{display:flex;gap:14px;justify-content:center;margin:20px 0;}
+  .codeSlot{width:64px;height:72px;border-radius:10px;background:#17100b;border:2px solid #4a3b2e;
+    display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;color:var(--gold);}
+  .keypad{display:grid;grid-template-columns:repeat(3,64px);gap:10px;justify-content:center;margin-top:8px;}
+  .key{height:52px;border-radius:10px;background:#2b211a;border:1px solid #453526;color:var(--ink);
+    font-size:20px;cursor:pointer;font-family:inherit;}
+  .key:hover{background:#3a2d22;}
+  .key.wide{grid-column:span 2;}
+  .hint{color:var(--dim);font-size:13px;margin-top:12px;}
+  /* dog overlay —— 更有张力的突袭 */
+  #dogOverlay{
+    position:absolute;inset:0;z-index:20;display:none;align-items:center;justify-content:center;
+    background:radial-gradient(700px 480px at 50% 50%, rgba(255,70,40,.3), rgba(20,4,2,.92));
+    overflow:hidden;
+  }
+  #dogOverlay.show{display:flex;animation:shk .45s ease-in-out infinite;}
+  #dogFlash{position:absolute;inset:0;background:linear-gradient(180deg, rgba(255,60,30,0), rgba(255,60,30,.3));mix-blend-mode:screen;animation:fl .3s steps(2) infinite;pointer-events:none;}
+  .bolt{position:absolute;font-size:120px;color:#fff;opacity:0;text-shadow:0 0 30px #ffe066,0 0 60px #ffb020;pointer-events:none;}
+  .bolt.bl{left:8%;top:5%;transform:rotate(-18deg);}
+  .bolt.br{right:8%;bottom:9%;transform:rotate(14deg);}
+  #dogOverlay.show .bolt{animation:boltflash .7s ease-in-out infinite;}
+  .bolt.br{animation-delay:.35s;}
+  @keyframes boltflash{0%,44%,100%{opacity:0;}50%{opacity:1;}62%{opacity:.2;}72%{opacity:.9;}}
+  #dogBox{text-align:center;position:relative;z-index:2;}
+  #dogEmoji{animation:doggle .5s ease-in-out infinite;filter:drop-shadow(0 0 34px #ffd36b);}
+  @keyframes doggle{0%,100%{transform:rotate(-4deg) translateX(-6px) scale(1);}50%{transform:rotate(4deg) translateX(6px) scale(1.07);}}
+  #dogTitle{font-size:28px;color:#ffd9d0;font-weight:800;letter-spacing:4px;margin:10px 0 4px;text-shadow:0 0 20px rgba(255,90,60,.9);}
+  #dogSub{color:var(--dim);font-size:15px;}
+  #dogTimer{font-size:48px;font-weight:900;color:#ffe066;margin:14px 0;text-shadow:0 0 24px rgba(255,90,60,.9);}
+  #dogBtn{
+    margin-top:8px;background:linear-gradient(180deg,#d8482c,#a52f18);border:1px solid #ff7a5c;color:#fff;
+    border-radius:12px;padding:14px 36px;font-size:20px;font-weight:800;letter-spacing:3px;cursor:pointer;font-family:inherit;
+    box-shadow:0 0 28px rgba(255,90,60,.7);animation:pulse 1s ease-in-out infinite;
+  }
+  #dogBtn:hover{filter:brightness(1.2);}
+  .shake{animation:shk .4s;}
+  @keyframes shk{0%,100%{transform:translate(0,0);}20%{transform:translate(-12px,5px);}40%{transform:translate(11px,-6px);}60%{transform:translate(-9px,-5px);}80%{transform:translate(8px,6px);}}
+  .flash{animation:fl .35s;}
+  @keyframes fl{0%{filter:brightness(1);}50%{filter:brightness(2.8) saturate(.15);}100%{filter:brightness(1);}}
+  /* 主角黄博 */
+  .player{
+    transform-box:fill-box; transform-origin:50% 100%;
+    animation:idle 3.4s ease-in-out infinite;
+    filter:drop-shadow(0 6px 14px rgba(0,0,0,.55));
+  }
+  @keyframes idle{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}
+  /* 闪电狗图片 */
+  #dogEmoji img{width:190px;height:190px;object-fit:contain;border-radius:18px;box-shadow:0 12px 36px rgba(0,0,0,.7);}
+  /* 开始界面 */
+  #startScreen{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;background:radial-gradient(1200px 800px at 50% 26%, #2e231b 0%, #14100c 55%, #080605 100%);padding:20px;}
+  #startScreen.hidden{display:none;}
+  .startInner{width:min(1120px,100%);display:grid;grid-template-columns:1fr 1.5fr 1fr;gap:28px;align-items:center;}
+  .startTitle{color:var(--gold);text-align:left;min-width:0;}
+  .startTitle .stBig{font-size:56px;font-weight:800;letter-spacing:8px;line-height:1.06;text-shadow:0 5px 22px rgba(0,0,0,.65);}
+  .startTitle .stTag{font-size:14px;color:var(--dim);margin-top:16px;letter-spacing:3px;}
+  .startVs{display:flex;align-items:center;justify-content:center;gap:12px;}
+  .charCard{display:flex;flex-direction:column;align-items:center;gap:10px;}
+  .charCard .ph{width:176px;height:240px;border-radius:18px;overflow:hidden;background:#241b15;border:2px solid rgba(240,192,96,.35);box-shadow:0 14px 40px rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;}
+  .charCard .ph img{width:100%;height:100%;object-fit:contain;}
+  .charCard.dog .ph img{transform:scaleX(-1);}
+  .charCard span{font-size:15px;color:var(--ink);letter-spacing:2px;}
+  .vsMark{font-size:44px;color:var(--gold2);text-shadow:0 0 22px rgba(255,90,60,.85);animation:pulse 1.2s ease-in-out infinite;}
+  .startMenu{display:flex;flex-direction:column;gap:14px;align-items:stretch;}
+  .startBtn{font-family:inherit;font-size:18px;font-weight:700;letter-spacing:3px;padding:15px 20px;border-radius:12px;cursor:pointer;border:1px solid #4a3b2e;background:linear-gradient(180deg,#3a2d24,#241b15);color:var(--ink);transition:.15s;}
+  .startBtn:hover{filter:brightness(1.2);border-color:var(--gold);}
+  .startBtn.gold{background:linear-gradient(180deg,#e0a63c,#b57f22);border-color:#ffd36b;color:#3a2400;}
+  .startBtn.disabled{opacity:.4;cursor:not-allowed;filter:none;}
+  /* 战斗界面 */
+  #battle{position:fixed;inset:0;z-index:70;display:none;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:radial-gradient(1100px 800px at 50% 40%, #3a2a1a 0%, #120c06 60%, #070402 100%);padding:24px;}
+  #battle.show{display:flex;}
+  .btTop{font-size:30px;font-weight:800;letter-spacing:6px;color:#ffe066;text-shadow:0 0 24px rgba(255,90,60,.8);}
+  .btStage{display:flex;align-items:center;gap:40px;}
+  .fighter{display:flex;flex-direction:column;align-items:center;gap:10px;width:190px;}
+  .fighter .fimg{width:150px;height:200px;border-radius:16px;overflow:hidden;background:#241b15;border:2px solid rgba(240,192,96,.35);box-shadow:0 12px 34px rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;}
+  .fighter .fimg img{width:100%;height:100%;object-fit:contain;}
+  .fighter.dog .fimg img{transform:scaleX(-1);}
+  .fname{font-size:17px;font-weight:700;color:var(--ink);letter-spacing:2px;}
+  .hpbar{width:100%;height:16px;border-radius:8px;background:#2b211a;border:1px solid #4a3b2e;overflow:hidden;}
+  .hpfill{height:100%;width:100%;background:linear-gradient(180deg,#7fd07f,#3f9d3f);transition:width .3s;}
+  .hpfill.dog{background:linear-gradient(180deg,#ff8a6a,#d8482c);}
+  .hptxt{font-size:12px;color:var(--dim);}
+  .btVs{font-size:44px;color:#ffe066;text-shadow:0 0 22px rgba(255,90,60,.9);}
+  #btLog{width:min(640px,100%);min-height:58px;max-height:96px;overflow:auto;background:rgba(20,14,9,.8);border:1px solid rgba(240,192,96,.25);border-radius:10px;padding:10px 14px;font-size:14px;color:var(--ink);line-height:1.7;}
+  .btRow{display:flex;gap:16px;align-items:stretch;flex-wrap:wrap;justify-content:center;width:min(720px,100%);}
+  #btItems{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;flex:1;}
+  .btItem{display:flex;flex-direction:column;align-items:center;gap:4px;background:#2b211a;border:1px solid #453526;border-radius:10px;padding:8px 10px;cursor:pointer;font-family:inherit;color:var(--ink);}
+  .btItem:hover{border-color:var(--gold);background:#3a2d22;}
+  .btItem img{width:42px;height:42px;object-fit:contain;}
+  .btItem span{font-size:11px;}
+  #btDodge{background:linear-gradient(180deg,#3a6ea5,#274b72);border:1px solid #6ea8d8;color:#fff;border-radius:12px;padding:10px 20px;font-size:17px;font-weight:800;letter-spacing:2px;cursor:pointer;font-family:inherit;}
+  #btDodge:hover{filter:brightness(1.2);}
+  #btDodge:disabled{opacity:.4;cursor:not-allowed;}
+  .fighter.flash{animation:fs .4s;}
+  @keyframes fs{0%,100%{transform:translateX(0);}30%{transform:translateX(-12px);}60%{transform:translateX(10px);}}
+  /* 移动端适配 */
+  *{touch-action:manipulation;}
+  @media (max-width:700px){
+    body{padding:0;}
+    #game{border-radius:0;border-left:none;border-right:none;width:100%;}
+    #topbar{flex-wrap:wrap;gap:6px;padding:8px 10px;}
+    #logo{font-size:15px;letter-spacing:0;}
+    #roomName{font-size:12px;}
+    #treasureCount{font-size:12px;}
+    .topbtn{padding:7px 9px;font-size:13px;}
+    .navbtn{width:48px;height:72px;font-size:26px;border-radius:12px;}
+    .navbtn.up,.navbtn.down{width:72px;height:42px;}
+    #msg{bottom:84px;font-size:13px;max-width:94%;}
+    #invBar{padding:8px 10px;}
+    .slot{width:60px;height:60px;}
+    .slot .ico img{width:40px;height:40px;}
+    .startInner{grid-template-columns:1fr;gap:16px;text-align:center;}
+    .startTitle{text-align:center;}
+    .startTitle .stBig{font-size:38px;letter-spacing:6px;}
+    .startTitle .stTag{margin-top:10px;}
+    .startVs{gap:6px;}
+    .charCard .ph{width:132px;height:172px;}
+    .vsMark{font-size:34px;}
+    .startBtn{font-size:16px;padding:13px 16px;}
+    #battle{gap:12px;padding:14px;}
+    .btTop{font-size:22px;letter-spacing:3px;}
+    .btStage{gap:14px;}
+    .fighter{width:132px;}
+    .fighter .fimg{width:110px;height:150px;}
+    .fname{font-size:14px;}
+    .btVs{font-size:30px;}
+    #btLog{font-size:13px;min-height:50px;}
+    .btItem img{width:38px;height:38px;}
+    #btDodge{padding:12px 16px;font-size:15px;}
+    .card{padding:20px 16px;}
+    .codeSlot{width:54px;height:62px;font-size:30px;}
+    .key{height:56px;font-size:20px;}
+    #dogEmoji img{width:150px;height:150px;}
+    #dogBtn{padding:13px 28px;font-size:18px;}
+    #dogTimer{font-size:40px;}
+  }
+</style>
+</head>
+<body>
+<div id="game">
+  <div id="topbar">
+    <span id="logo">🐕 黄博妙妙屋</span>
+    <span id="roomName"></span>
+    <span id="treasureCount">秘宝 0 / 7</span>
+    <button class="topbtn" id="hintBtn" title="提示">💡 提示</button>
+    <button class="topbtn" id="soundBtn" title="声音开关">🔊</button>
+    <button class="topbtn" id="musicBtn" title="音乐开关">🎵</button>
+  </div>
+
+  <div id="sceneWrap">
+    <svg id="scene" viewBox="0 0 960 560" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"></svg>
+    <div id="msg"></div>
+    <div id="dogOverlay">
+      <div id="dogFlash"></div>
+      <div class="bolt bl">⚡</div>
+      <div class="bolt br">⚡</div>
+      <div id="dogBox">
+        <div id="dogEmoji"><img src="images/dog.jpg" alt="闪电狗"></div>
+        <div id="dogTitle">⚡ 闪电狗来袭！</div>
+        <div id="dogSub"></div>
+        <div id="dogTimer"></div>
+        <button id="dogBtn">🙈 躲起来！</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="invBar">
+    <span id="invLabel">背包</span>
+    <div id="invSlots" style="display:flex;gap:8px;flex-wrap:wrap;flex:1;"></div>
+  </div>
+</div>
+
+<div id="modal"></div>
+
+<div id="startScreen">
+  <div class="startInner">
+    <div class="startTitle">
+      <div class="stBig">黄博</div>
+      <div class="stBig">妙妙屋</div>
+      <div class="stTag">手绘解谜 · BOBO 秘宝</div>
+    </div>
+    <div class="startVs">
+      <div class="charCard bob">
+        <div class="ph"><img src="images/huangbo.jpg" alt="黄博"></div>
+        <span>黄博</span>
+      </div>
+      <div class="vsMark">⚡</div>
+      <div class="charCard dog">
+        <div class="ph"><img src="images/dog.jpg" alt="闪电狗"></div>
+        <span>闪电狗</span>
+      </div>
+    </div>
+    <div class="startMenu">
+      <button class="startBtn gold" onclick="startGame()">开始游戏</button>
+      <button class="startBtn" id="continueBtn" onclick="continueGame()">继续游戏</button>
+      <button class="startBtn" onclick="showHelp()">操作说明</button>
+    </div>
+  </div>
+</div>
+
+<div id="battle">
+  <div class="btTop">⚔ 最终身法战</div>
+  <div class="btStage">
+    <div class="fighter" id="fBob">
+      <div class="fimg"><img src="images/huangbo-agile.jpg" alt="黄博"></div>
+      <div class="fname">黄博</div>
+      <div class="hpbar"><div id="bobHp" class="hpfill"></div></div>
+      <div class="hptxt" id="bobHpTxt">100 / 100</div>
+    </div>
+    <div class="btVs">⚡</div>
+    <div class="fighter dog" id="fDog">
+      <div class="fimg"><img src="images/dog.jpg" alt="闪电狗"></div>
+      <div class="fname">闪电狗</div>
+      <div class="hpbar"><div id="dogHp" class="hpfill dog"></div></div>
+      <div class="hptxt" id="dogHpTxt">120 / 120</div>
+    </div>
+  </div>
+  <div id="btLog"></div>
+  <div class="btRow">
+    <div id="btItems"></div>
+    <button id="btDodge">💨 闪避</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* =====================================================================
+ *  黄博妙妙屋 · BOBO解谜  —— 单文件网页游戏
+ *  玩法：在妙妙屋中探索解谜，集齐 7 件 BOBO 秘宝，学会身法，打败闪电狗，逃出生天。
+ * ===================================================================== */
+
+/* ---------------- 物品定义 ---------------- */
+const ITEMS = {
+  scissors : {name:"折叠剪刀",   icon:"✂️", img:"images/scissors.png", treasure:true},
+  bottle   : {name:"积液瓶",     icon:"🧪", img:"images/bottle.png", treasure:true},
+  betel    : {name:"和成天下槟榔", icon:"🥜", img:"images/betel.png", treasure:true},
+  foot     : {name:"脚儿巴",     icon:"🦶", img:"images/foot.png", treasure:true},
+  batknife : {name:"蝙蝠刀",     icon:"🦇", img:"images/batknife.png", treasure:true},
+  bailing  : {name:"百灵仙",     icon:"🐦", img:"images/bailing.png", treasure:true},
+  manual   : {name:"身法秘籍",   icon:"📜", img:"images/manual.png", treasure:true, final:true},
+  broom    : {name:"扫把",       icon:"🧹", img:"images/broom.png"},
+  key      : {name:"钥匙",       icon:"🔑", img:"images/key.png"},
+  flashlight:{name:"手电筒",     icon:"🔦", img:"images/flashlight.png"}
+};
+const SIX = ["scissors","bottle","betel","foot","batknife","bailing"]; // 供奉祭坛的六件
+const CODE = "373";
+const BOOK_ORDER = ["red","blue","green","yellow"];
+
+/* ---------------- 游戏状态 ---------------- */
+const state = {
+  room: "living",
+  inventory: new Set(),   // 手中持有的物品（含工具与未供奉的秘宝）
+  placed: new Set(),      // 已供奉到祭坛的秘宝
+  stolen: [],             // 被闪电狗抢走的秘宝
+  flags: {},              // 各类谜题进度
+  selected: null,         // 当前选中的背包物品
+  bookSeq: 0,
+  gotManual: false,
+  dogDefeated: false,
+  over: false,
+  muted: false,
+  musicOn: true,
+  dogBusy: false,
+  codeEntered: ""
+};
+
+/* ---------------- 存档 / 续玩 ---------------- */
+const SAVE_KEY = "hbmww_save_v1";
+function saveGame(){
+  if(state.over) return;
+  try{
+    const data = {
+      room: state.room,
+      inventory: Array.from(state.inventory),
+      placed: Array.from(state.placed),
+      stolen: state.stolen.slice(),
+      flags: state.flags,
+      bookSeq: state.bookSeq,
+      gotManual: state.gotManual,
+      dogDefeated: state.dogDefeated,
+      muted: state.muted,
+      musicOn: state.musicOn
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+  }catch(e){}
+}
+function hasSave(){
+  try{ return !!localStorage.getItem(SAVE_KEY); }catch(e){ return false; }
+}
+function clearSave(){
+  try{ localStorage.removeItem(SAVE_KEY); }catch(e){}
+}
+function loadGame(){
+  let data = null;
+  try{ data = JSON.parse(localStorage.getItem(SAVE_KEY)); }catch(e){ return false; }
+  if(!data) return false;
+  state.room = data.room || "living";
+  state.inventory = new Set(data.inventory || []);
+  state.placed = new Set(data.placed || []);
+  state.stolen = (data.stolen || []).slice();
+  state.flags = Object.assign({}, data.flags);
+  state.bookSeq = data.bookSeq || 0;
+  state.gotManual = !!data.gotManual;
+  state.dogDefeated = !!data.dogDefeated;
+  state.over = false;
+  state.muted = !!data.muted;
+  state.musicOn = data.musicOn !== false;
+  state.selected = null;
+  state.dogBusy = false;
+  state.codeEntered = "";
+  document.getElementById("soundBtn").textContent = state.muted ? "🔇" : "🔊";
+  document.getElementById("musicBtn").textContent = state.musicOn ? "🎵" : "🔕";
+  if(state.flags.posterCut) ROOMS.study.nav.up = "secret";
+  hideStartScreen();
+  go(state.room);
+  msg("继续游戏，欢迎回来！");
+  startBgm();
+  if(state.gotManual && !state.dogDefeated){ startFinalShowdown(); }
+  else { scheduleDog(); }
+  return true;
+}
+
+/* ---------------- 音效（Web Audio 简单合成） ---------------- */
+let actx = null;
+function beep(freq, dur, type, vol){
+  if(state.muted) return;
+  try{
+    actx = actx || new (window.AudioContext||window.webkitAudioContext)();
+    if(actx.state === "suspended") actx.resume();
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = type||"sine"; o.frequency.value = freq;
+    g.gain.value = vol||0.08;
+    o.connect(g); g.connect(actx.destination);
+    const t = actx.currentTime;
+    g.gain.setValueAtTime(0.0001,t);
+    g.gain.exponentialRampToValueAtTime(vol||0.08, t+0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+    o.start(t); o.stop(t+dur+0.02);
+  }catch(e){}
+}
+const sfx = {
+  pick:()=>{beep(660,.1,"triangle");beep(880,.14,"triangle");},
+  use:()=>{beep(440,.12,"square");beep(330,.16,"square");},
+  err:()=>{beep(180,.18,"sawtooth");},
+  open:()=>{beep(520,.08,"triangle");beep(700,.1,"triangle");beep(940,.12,"triangle");},
+  zap:()=>{beep(120,.4,"sawtooth",.18);beep(80,.5,"sawtooth",.14);},
+  warn:()=>{beep(220,.3,"square",.12);beep(220,.3,"square",.12);},
+  win:()=>{[660,880,1100,1320].forEach((f,i)=>beep(f,.22,"triangle",.1));}
+};
+
+/* ---------------- 背景音乐（Web Audio 简单合成循环） ---------------- */
+let bgmTimer = null, bgmStep = 0;
+const BGM_SEQ = [220.00, 261.63, 329.63, 392.00, 329.63, 293.66, 261.63, 246.94, 196.00, 246.94, 293.66, 329.63];
+function playBgmStep(){
+  if(!state.musicOn || state.muted) return;
+  const f = BGM_SEQ[bgmStep % BGM_SEQ.length];
+  beep(f, .55, "triangle", .026);
+  beep(f*2, .45, "sine", .012);
+  bgmStep++;
+}
+function startBgm(){
+  stopBgm();
+  playBgmStep();
+  bgmTimer = setInterval(playBgmStep, 460);
+}
+function stopBgm(){
+  if(bgmTimer){ clearInterval(bgmTimer); bgmTimer = null; }
+}
+/* 突袭警报音（紧张急促） */
+let alarmTimer = null, alarmStep = 0;
+function startAlarm(){
+  stopAlarm();
+  alarmStep = 0;
+  alarmTimer = setInterval(()=>{
+    if(state.muted) return;
+    const f = alarmStep % 2 === 0 ? 920 : 700;
+    beep(f, .09, "square", .1);
+    if(alarmStep % 4 === 0) beep(160, .12, "sawtooth", .12);
+    alarmStep++;
+  }, 170);
+}
+function stopAlarm(){
+  if(alarmTimer){ clearInterval(alarmTimer); alarmTimer = null; }
+}
+
+/* ---------------- 消息提示 ---------------- */
+let msgTimer = null;
+function msg(text, cls){
+  const el = document.getElementById("msg");
+  el.textContent = text;
+  el.className = "show" + (cls ? " " + cls : "");
+  clearTimeout(msgTimer);
+  msgTimer = setTimeout(()=>{ el.className = ""; }, 3400);
+}
+
+/* ---------------- 背包渲染 ---------------- */
+function invList(){
+  return Array.from(state.inventory);
+}
+function updateInventory(){
+  const wrap = document.getElementById("invSlots");
+  const items = invList();
+  wrap.innerHTML = "";
+  if(items.length === 0){
+    const e = document.createElement("div");
+    e.className = "slot empty";
+    e.innerHTML = '<span class="ico">·</span><span class="nm">空空如也</span>';
+    wrap.appendChild(e);
+  }
+  items.forEach(id=>{
+    const it = ITEMS[id];
+    const s = document.createElement("div");
+    s.className = "slot" + (state.selected === id ? " selected" : "") + (it.treasure ? " treasure" : "");
+    s.innerHTML = (it.img
+      ? '<span class="ico"><img src="'+it.img+'" alt="'+it.name+'"></span>'
+      : '<span class="ico">'+it.icon+'</span>')
+      + '<span class="nm">'+it.name+'</span>';
+    s.title = it.name;
+    s.onclick = ()=>{
+      if(state.selected === id){ state.selected = null; }
+      else { state.selected = id; sfx.pick(); msg("选中了「"+it.name+"」，点击场景使用或再次点击取消。"); }
+      updateInventory();
+    };
+    wrap.appendChild(s);
+  });
+  updateTreasureCount();
+}
+function updateTreasureCount(){
+  const have = SIX.filter(t=>state.inventory.has(t)||state.placed.has(t)).length
+             + (state.gotManual ? 1 : 0);
+  document.getElementById("treasureCount").textContent = "秘宝 " + have + " / 7";
+}
+function give(id){
+  state.inventory.add(id);
+  sfx.pick();
+  updateInventory();
+  saveGame();
+}
+
+/* =====================================================================
+ *  房间场景（SVG）
+ * ===================================================================== */
+/* 手绘风共用定义 */
+const HD_DEFS = `
+  <defs>
+    <filter id="hd" x="-6%" y="-6%" width="112%" height="112%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.013" numOctaves="2" seed="5" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="4" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <linearGradient id="hwall" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#dfc99e"/><stop offset="1" stop-color="#c4a87a"/>
+    </linearGradient>
+    <linearGradient id="hfloor" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9c7447"/><stop offset="1" stop-color="#7c5a34"/>
+    </linearGradient>
+    <radialGradient id="hlight" cx="50%" cy="36%" r="65%">
+      <stop offset="0" stop-color="#fff3d1" stop-opacity=".16"/>
+      <stop offset="1" stop-color="#fff3d1" stop-opacity="0"/>
+    </radialGradient>
+  </defs>`;
+const WALL = `<rect x="0" y="0" width="960" height="360" fill="url(#hwall)"/><rect x="0" y="0" width="960" height="360" fill="url(#hlight)"/>`;
+const FLOOR = `
+  <path d="M0 360 L960 360 L960 560 L0 560 Z" fill="url(#hfloor)"/>
+  <path d="M0 430 L960 430 M0 504 L960 504" stroke="#6f5236" stroke-width="3" opacity=".4"/>
+  <ellipse cx="480" cy="478" rx="360" ry="72" fill="#5e4529" opacity=".22"/>`;
+
+const ROOMS = {
+  living: {
+    name:"玄关客厅",
+    nav:{left:"bedroom", right:"kitchen", up:"study"},
+    svg:`
+      ${WALL}
+      ${FLOOR}
+      <!-- 窗户 -->
+      <rect x="118" y="96" width="196" height="152" rx="10" fill="#f3e6c4" stroke="#5a4630" stroke-width="4"/>
+      <rect x="127" y="105" width="82" height="134" fill="#a9c4c0" opacity=".85"/>
+      <rect x="219" y="105" width="86" height="134" fill="#a9c4c0" opacity=".85"/>
+      <path d="M118 172 L314 172 M216 96 L216 248" stroke="#5a4630" stroke-width="4" fill="none"/>
+      <text x="168" y="228" font-size="22" text-anchor="middle" opacity=".6">🌙</text>
+      <!-- 挂画 -->
+      <g class="hs" data-hs="painting">
+        <rect x="66" y="56" width="164" height="126" fill="transparent"/>
+        <rect x="80" y="70" width="136" height="96" rx="6" fill="#8a6844" stroke="#5a4630" stroke-width="4"/>
+        <circle cx="148" cy="118" r="26" fill="#d9c9a2" opacity=".85"/>
+        <text class="obj" x="148" y="126" font-size="24" text-anchor="middle">🗺️</text>
+      </g>
+      <!-- 门 -->
+      <g class="hs" data-hs="door">
+        <rect x="636" y="64" width="228" height="306" fill="transparent"/>
+        <rect x="648" y="76" width="204" height="294" rx="10" fill="#7a5a34" stroke="#5a4630" stroke-width="5"/>
+        <rect x="660" y="88" width="180" height="270" rx="6" fill="#8a6844" opacity=".55"/>
+        <circle cx="820" cy="224" r="8" fill="#e0b055" stroke="#5a4630" stroke-width="2"/>
+      </g>
+      <!-- 衣架（剪刀） -->
+      <g class="hs" data-hs="coat">
+        <rect x="382" y="58" width="134" height="252" fill="transparent"/>
+        <path d="M450 70 L450 300 M450 70 L418 132 M450 70 L482 132" stroke="#5a4630" stroke-width="7" fill="none" stroke-linecap="round"/>
+        <image class="obj" href="images/scissors.png" xlink:href="images/scissors.png" x="400" y="132" width="64" height="64" preserveAspectRatio="xMidYMid meet"/>
+      </g>
+      <!-- 电视 -->
+      <g class="hs" data-hs="tv">
+        <rect x="378" y="248" width="164" height="124" fill="transparent"/>
+        <rect x="388" y="258" width="144" height="86" rx="6" fill="#3a3f3a" stroke="#5a4630" stroke-width="4"/>
+        <rect x="448" y="344" width="30" height="22" fill="#5a4630"/>
+        <text class="obj" x="460" y="308" font-size="24" text-anchor="middle">📺</text>
+      </g>
+      <!-- 沙发 -->
+      <g class="hs" data-hs="sofa">
+        <rect x="136" y="326" width="238" height="146" fill="transparent"/>
+        <rect x="150" y="368" width="210" height="92" rx="20" fill="#b06a4a" stroke="#5a4630" stroke-width="4"/>
+        <rect x="150" y="336" width="210" height="44" rx="16" fill="#c37a55" stroke="#5a4630" stroke-width="4"/>
+        <rect x="166" y="414" width="28" height="44" rx="8" fill="#8a6844"/>
+        <rect x="326" y="414" width="28" height="44" rx="8" fill="#8a6844"/>
+        <text class="obj" x="255" y="400" font-size="38" text-anchor="middle">🛋️</text>
+      </g>
+      <!-- 狗窝（被抢秘宝时出现） -->
+      <g class="hs" data-hs="doghouse" style="display:none">
+        <rect x="556" y="376" width="158" height="128" fill="transparent"/>
+        <path d="M556 470 L600 396 L644 470 Z" fill="#8a6844" stroke="#5a4630" stroke-width="4"/>
+        <rect x="600" y="456" width="42" height="34" rx="4" fill="#4e3a26"/>
+        <image class="obj" href="images/dog.jpg" xlink:href="images/dog.jpg" x="588" y="406" width="82" height="66" preserveAspectRatio="xMidYMax meet"/>
+      </g>
+    `
+  },
+
+  kitchen: {
+    name:"厨房",
+    nav:{left:"living"},
+    svg:`
+      ${WALL}
+      ${FLOOR}
+      <!-- 橱柜台面 -->
+      <rect x="0" y="328" width="960" height="64" fill="#8a6844" stroke="#5a4630" stroke-width="3"/>
+      <rect x="0" y="328" width="960" height="12" fill="#b58a56"/>
+      <!-- 高架（积液瓶） -->
+      <g class="hs" data-hs="shelf">
+        <rect x="636" y="56" width="228" height="156" fill="transparent"/>
+        <rect x="650" y="150" width="200" height="18" rx="4" fill="#7a5a34" stroke="#5a4630" stroke-width="3"/>
+        <path d="M652 150 L652 210 M848 150 L848 210" stroke="#5a4630" stroke-width="5"/>
+        <image class="obj" href="images/bottle.png" xlink:href="images/bottle.png" x="718" y="92" width="64" height="58" preserveAspectRatio="xMidYMax meet"/>
+      </g>
+      <!-- 柜子（密码锁） -->
+      <g class="hs" data-hs="cabinet">
+        <rect x="112" y="146" width="240" height="216" fill="transparent"/>
+        <rect x="124" y="156" width="216" height="180" rx="8" fill="#8a6844" stroke="#5a4630" stroke-width="5"/>
+        <rect x="134" y="170" width="196" height="72" fill="#6f5236"/>
+        <rect x="134" y="250" width="196" height="80" fill="#6f5236"/>
+        <circle cx="232" cy="300" r="9" fill="#e0b055" stroke="#5a4630" stroke-width="2"/>
+        <text class="obj" x="232" y="238" font-size="36" text-anchor="middle">🔒</text>
+      </g>
+      <!-- 冰箱 -->
+      <g class="hs" data-hs="fridge">
+        <rect x="676" y="236" width="168" height="256" fill="transparent"/>
+        <rect x="688" y="246" width="144" height="240" rx="10" fill="#7f8f8a" stroke="#5a4630" stroke-width="5"/>
+        <line x1="688" y1="326" x2="832" y2="326" stroke="#5a4630" stroke-width="5"/>
+        <rect x="704" y="336" width="20" height="88" fill="#6f5236"/>
+        <text class="obj" x="760" y="312" font-size="30" text-anchor="middle">🧊</text>
+      </g>
+    `
+  },
+
+  bedroom: {
+    name:"卧室",
+    nav:{right:"living"},
+    svg:`
+      ${WALL}
+      ${FLOOR}
+      <!-- 床 -->
+      <g class="hs" data-hs="bed">
+        <rect x="112" y="292" width="372" height="188" fill="transparent"/>
+        <rect x="128" y="328" width="340" height="124" rx="12" fill="#8a6844" stroke="#5a4630" stroke-width="4"/>
+        <rect x="128" y="298" width="340" height="52" rx="14" fill="#b58a56"/>
+        <rect x="150" y="330" width="140" height="62" rx="10" fill="#d8c39a"/>
+        <rect x="306" y="330" width="150" height="62" rx="10" fill="#d8c39a"/>
+        <rect x="128" y="328" width="340" height="32" fill="#6f5236" opacity=".5"/>
+      </g>
+      <!-- 衣柜 -->
+      <g class="hs" data-hs="wardrobe">
+        <rect x="636" y="112" width="228" height="300" fill="transparent"/>
+        <rect x="650" y="124" width="200" height="282" rx="8" fill="#8a6844" stroke="#5a4630" stroke-width="5"/>
+        <line x1="750" y1="124" x2="750" y2="406" stroke="#5a4630" stroke-width="5"/>
+        <circle cx="734" cy="270" r="8" fill="#e0b055" stroke="#5a4630" stroke-width="2"/>
+        <text class="obj" x="750" y="300" font-size="44" text-anchor="middle">🚪</text>
+      </g>
+      <!-- 角落扫把 -->
+      <g class="hs" data-hs="broomspot">
+        <rect x="48" y="300" width="132" height="184" fill="transparent"/>
+        <image class="obj" href="images/broom.png" xlink:href="images/broom.png" x="66" y="320" width="96" height="132" preserveAspectRatio="xMidYMax meet"/>
+      </g>
+    `
+  },
+
+  study: {
+    name:"书房",
+    nav:{down:"living"},
+    svg:`
+      ${WALL}
+      ${FLOOR}
+      <!-- 书桌 -->
+      <g class="hs" data-hs="desk">
+        <rect x="316" y="326" width="288" height="154" fill="transparent"/>
+        <rect x="330" y="360" width="260" height="24" rx="4" fill="#b58a56" stroke="#5a4630" stroke-width="3"/>
+        <rect x="346" y="384" width="228" height="90" rx="6" fill="#8a6844" stroke="#5a4630" stroke-width="3"/>
+        <circle cx="452" cy="428" r="8" fill="#e0b055"/>
+        <text class="obj" x="460" y="402" font-size="38" text-anchor="middle">📝</text>
+      </g>
+      <!-- 书架 -->
+      <g class="hs" data-hs="bookShelf">
+        <rect x="82" y="74" width="266" height="326" fill="transparent"/>
+        <rect x="94" y="84" width="246" height="310" rx="8" fill="#8a6844" stroke="#5a4630" stroke-width="5"/>
+        <rect x="104" y="96" width="226" height="70" fill="#6f5236"/>
+        <rect x="104" y="176" width="226" height="70" fill="#6f5236"/>
+        <rect x="104" y="256" width="226" height="70" fill="#6f5236"/>
+        <g class="hs" data-hs="bookGuide" style="cursor:pointer">
+          <rect x="112" y="100" width="52" height="62" fill="transparent"/>
+          <text class="obj" x="138" y="142" font-size="34" text-anchor="middle">📖</text>
+        </g>
+        <g class="hs" data-hs="bookRed"><rect x="172" y="100" width="44" height="62" fill="transparent"/><text class="obj" x="194" y="142" font-size="30" text-anchor="middle">📕</text></g>
+        <g class="hs" data-hs="bookBlue"><rect x="218" y="100" width="44" height="62" fill="transparent"/><text class="obj" x="240" y="142" font-size="30" text-anchor="middle">📘</text></g>
+        <g class="hs" data-hs="bookGreen"><rect x="264" y="100" width="44" height="62" fill="transparent"/><text class="obj" x="286" y="142" font-size="30" text-anchor="middle">📗</text></g>
+        <g class="hs" data-hs="bookYellow"><rect x="310" y="100" width="44" height="62" fill="transparent"/><text class="obj" x="332" y="142" font-size="30" text-anchor="middle">📙</text></g>
+        <text x="106" y="236" font-size="13" fill="#e0c89a" opacity=".7">—— 第二层 ——</text>
+        <text x="106" y="316" font-size="13" fill="#e0c89a" opacity=".7">—— 第三层 ——</text>
+      </g>
+      <!-- 海报（密室入口） -->
+      <g class="hs" data-hs="poster">
+        <rect x="636" y="84" width="208" height="258" fill="transparent"/>
+        <rect x="650" y="98" width="180" height="230" rx="6" fill="#4e3a26" stroke="#5a4630" stroke-width="4"/>
+        <text class="obj" x="740" y="222" font-size="58" text-anchor="middle">🖼️</text>
+      </g>
+    `
+  },
+
+  secret: {
+    name:"密室",
+    nav:{down:"study"},
+    svg:`
+      <rect x="0" y="0" width="960" height="360" fill="#2b2318"/>
+      <rect x="0" y="0" width="960" height="360" fill="#17110a" opacity=".5"/>
+      <path d="M0 360 L960 360 L960 560 L0 560 Z" fill="#4e3a26"/>
+      <ellipse cx="480" cy="478" rx="380" ry="72" fill="#2e2116" opacity=".6"/>
+      <!-- 火把 -->
+      <text x="108" y="182" font-size="50" text-anchor="middle">🔥</text>
+      <text x="852" y="182" font-size="50" text-anchor="middle">🔥</text>
+      <!-- 鸟笼（百灵仙） -->
+      <g class="hs" data-hs="cage">
+        <rect x="676" y="54" width="208" height="226" fill="transparent"/>
+        <line x1="780" y1="54" x2="780" y2="140" stroke="#8a6844" stroke-width="5"/>
+        <rect x="718" y="140" width="124" height="124" rx="12" fill="none" stroke="#c9b28a" stroke-width="5"/>
+        <line x1="780" y1="140" x2="780" y2="264" stroke="#c9b28a" stroke-width="3"/>
+        <line x1="718" y1="188" x2="842" y2="188" stroke="#c9b28a" stroke-width="3"/>
+        <image class="obj" href="images/bailing.png" xlink:href="images/bailing.png" x="740" y="150" width="80" height="90" preserveAspectRatio="xMidYMax meet"/>
+      </g>
+      <!-- 祭坛 -->
+      <g class="hs" data-hs="altar">
+        <rect x="216" y="296" width="528" height="206" fill="transparent"/>
+        <rect x="240" y="360" width="480" height="34" rx="8" fill="#7a5a34" stroke="#5a4630" stroke-width="4"/>
+        <rect x="268" y="394" width="424" height="18" fill="#6f5236"/>
+        <rect x="300" y="422" width="360" height="16" fill="#5a4630"/>
+        <text class="obj" x="480" y="354" font-size="36" text-anchor="middle">🗿</text>
+      </g>
+      <!-- 六个凹槽 -->
+      <g id="altarSlots"></g>
+    `
+  }
+};
+
+/* =====================================================================
+ *  渲染
+ * ===================================================================== */
+const scene = document.getElementById("scene");
+function playerSvg(){
+  const src = state.gotManual ? "images/huangbo-agile.jpg" : "images/huangbo.jpg";
+  return `
+    <ellipse cx="480" cy="521" rx="56" ry="13" fill="#000" opacity=".35"/>
+    <image class="player" href="${src}" xlink:href="${src}" x="425" y="372" width="110" height="148" preserveAspectRatio="xMidYMax meet"/>`;
+}
+function renderRoom(){
+  const r = ROOMS[state.room];
+  document.getElementById("roomName").textContent = "· " + r.name;
+  scene.innerHTML = HD_DEFS + '<g filter="url(#hd)">' + r.svg + '</g>' + playerSvg();
+  // 祭坛凹槽
+  if(state.room === "secret"){
+    const slots = document.getElementById("altarSlots");
+    if(slots){
+      const sx = [330,400,470,540,610,680];
+      SIX.forEach((t,i)=>{
+        const filled = state.placed.has(t);
+        slots.innerHTML += `
+          <circle cx="${sx[i]}" cy="388" r="20" fill="${filled ? '#1d1510' : '#2a1f17'}" stroke="#8a6a48" stroke-width="3"/>
+          <text x="${sx[i]}" y="394" font-size="20" text-anchor="middle" fill="#e9ddc7">${filled ? ITEMS[t].icon : "·"}</text>`;
+      });
+    }
+  }
+  // 狗窝可见性
+  const dh = scene.querySelector('[data-hs="doghouse"]');
+  if(dh) dh.style.display = state.stolen.length > 0 ? "" : "none";
+  // 导航按钮
+  renderNav(r.nav);
+}
+function renderNav(nav){
+  // 清理旧导航按钮
+  document.querySelectorAll(".navbtn").forEach(n=>n.remove());
+  const wrap = document.getElementById("sceneWrap");
+  const defs = [
+    ["left","←", "left"],["right","→","right"],["up","↑","up"],["down","↓","down"]
+  ];
+  defs.forEach(([dir,label,cls])=>{
+    const target = nav[dir];
+    if(!target) return;
+    const b = document.createElement("button");
+    b.className = "navbtn " + cls;
+    b.textContent = label;
+    b.title = "前往 " + ROOMS[target].name;
+    b.onclick = ()=>go(target);
+    wrap.appendChild(b);
+  });
+}
+function go(room){
+  state.room = room;
+  state.selected = null;
+  updateInventory();
+  renderRoom();
+  saveGame();
+}
+
+/* =====================================================================
+ *  热点处理
+ * ===================================================================== */
+scene.addEventListener("click", e=>{
+  const g = e.target.closest("[data-hs]");
+  if(!g) return;
+  const id = g.getAttribute("data-hs");
+  if(state.dogBusy) return;
+  handleHotspot(id, state.selected);
+});
+
+function handleHotspot(id, item){
+  const f = state.flags;
+  switch(id){
+
+    /* ---------- 客厅 ---------- */
+    case "coat":
+      if(!state.inventory.has("scissors") && !state.placed.has("scissors")){
+        give("scissors"); msg("你从衣架上取下了「折叠剪刀」！✂️","good");
+      } else if(state.placed.has("scissors")){
+        msg("衣架上空空如也。");
+      } else msg("衣架上的衣服已经被翻过了。");
+      break;
+
+    case "sofa":
+      if(item === "scissors" && !f.sofaCut){
+        f.sofaCut = true; sfx.use();
+        give("key");
+        msg("你用剪刀剪开沙发的线头，掉出一把「钥匙」！🔑","good");
+      } else if(item === "scissors" && f.sofaCut){
+        msg("沙发里已经没有东西了。");
+      } else if(!f.sofaCut && !item){
+        msg("沙发上有一根松动的线头，也许能用「折叠剪刀」剪开。");
+      } else if(!f.sofaCut && item && item !== "scissors"){
+        msg("这东西对沙发线头没什么用。");
+      } else msg("沙发里已经没有东西了。");
+      break;
+
+    case "tv":
+      msg(f.noteRead ? "电视屏幕闪烁着：3 7 3" : "电视屏幕闪烁着：3 ★ 3，★ 似乎被谁涂掉了。");
+      break;
+
+    case "painting":
+      msg("挂画上画着妙妙屋的平面图，书房那幅海报的后面似乎另有乾坤。");
+      break;
+
+    case "doghouse":
+      if(state.stolen.length){
+        const back = state.stolen.splice(0);
+        back.forEach(t=>state.inventory.add(t));
+        sfx.open();
+        msg("你在狗窝里找回了被抢走的秘宝！" + back.map(t=>ITEMS[t].name).join("、"),"good");
+        updateInventory(); renderRoom();
+      } else msg("狗窝空空的。");
+      break;
+
+    case "door":
+      if(state.gotManual && state.dogDefeated){ winGame(); }
+      else if(state.gotManual) msg("你已学会身法，但闪电狗还挡在门口！先去打败它。");
+      else msg("大门被一股神秘力量锁住了，只有学会「身法秘籍」才能打开。");
+      break;
+
+    /* ---------- 厨房 ---------- */
+    case "shelf":
+      if(item === "broom" && !f.shelfKnocked){
+        f.shelfKnocked = true; sfx.use();
+        give("bottle");
+        msg("你用扫把把「积液瓶」勾了下来！🧪","good");
+      } else if(item === "broom" && f.shelfKnocked){
+        msg("架子上已经没有东西了。");
+      } else if(!item){
+        msg("架子太高了，够不到。也许需要一根长一点的工具。");
+      } else if(item && item !== "broom"){
+        msg("还是够不到，太短了。");
+      } else msg("架子上已经没有东西了。");
+      break;
+
+    case "cabinet":
+      if(f.cabinetOpen){ msg("柜门已经打开，里面空空如也。"); }
+      else openCodePad();
+      break;
+
+    case "fridge":
+      msg("冰箱里空空如也，只有一股寒气。也许该去找点别的线索。");
+      break;
+
+    /* ---------- 卧室 ---------- */
+    case "broomspot":
+      if(!state.inventory.has("broom")){
+        give("broom"); msg("你捡起了角落里的「扫把」！🧹","good");
+      } else msg("角落里已经没有扫把了。");
+      break;
+
+    case "wardrobe":
+      if(item === "key" && !f.wardrobeOpen){
+        f.wardrobeOpen = true; sfx.open();
+        give("flashlight");
+        msg("你用钥匙打开衣柜，拿到了「手电筒」！🔦","good");
+      } else if(item === "key" && f.wardrobeOpen){
+        msg("衣柜里已经没有东西了。");
+      } else if(!f.wardrobeOpen && !item){
+        msg("衣柜锁着，需要一把「钥匙」。");
+      } else if(!f.wardrobeOpen && item && item !== "key"){
+        msg("这把锁需要「钥匙」。");
+      } else msg("衣柜里已经没有东西了。");
+      break;
+
+    case "bed":
+      if(item === "flashlight" && !f.bedLooked){
+        f.bedLooked = true; sfx.use();
+        give("foot");
+        msg("手电筒照向床底，你摸到了一个奇怪的「脚儿巴」！🦶","good");
+      } else if(item === "flashlight" && f.bedLooked){
+        msg("床底已经看过了，什么也没有。");
+      } else if(!item){
+        msg("床底黑漆漆的，什么也看不见。也许需要照亮它。");
+      } else if(item && item !== "flashlight"){
+        msg("床底太黑了，你需要光线。");
+      } else msg("床底已经看过了，什么也没有。");
+      break;
+
+    /* ---------- 书房 ---------- */
+    case "desk":
+      if(!f.noteRead){
+        f.noteRead = true; sfx.open();
+        msg("抽屉里有一张纸条：★ = 7。","good");
+      } else msg("抽屉里只剩一张写着 ★ = 7 的纸条。");
+      break;
+
+    case "bookGuide":
+      msg("《BOBO秘宝图鉴》记载：红、蓝、绿、黄，依次点亮书架。");
+      break;
+
+    case "bookRed": bookClick("red"); break;
+    case "bookBlue": bookClick("blue"); break;
+    case "bookGreen": bookClick("green"); break;
+    case "bookYellow": bookClick("yellow"); break;
+
+    case "poster":
+      if(item === "batknife" && !f.posterCut){
+        f.posterCut = true; sfx.open();
+        msg("你用「蝙蝠刀」割开海报，露出一扇向上的暗门！","good");
+        renderNav(ROOMS[state.room].nav);
+        // 解锁密室导航
+        ROOMS.study.nav.up = "secret";
+        renderNav(ROOMS.study.nav);
+      } else if(item === "batknife" && f.posterCut){
+        msg("海报已经被割开了。");
+      } else if(!f.posterCut && !item){
+        msg("海报后面似乎藏着什么，但需要锋利的工具割开。");
+      } else if(!f.posterCut && item && item !== "batknife"){
+        msg("割不开，需要更锋利的工具。");
+      } else msg("海报已经被割开了。");
+      break;
+
+    /* ---------- 密室 ---------- */
+    case "cage":
+      if(item === "scissors" && !f.cageOpen){
+        f.cageOpen = true; sfx.open();
+        give("bailing");
+        msg("你剪断绳子，「百灵仙」振翅飞出，落在你肩头！🐦","good");
+        renderRoom();
+      } else if(item === "scissors" && f.cageOpen){
+        msg("鸟笼已经空了。");
+      } else if(!f.cageOpen && !item){
+        msg("鸟笼用绳子吊在半空，绳子上打了个结。");
+      } else if(!f.cageOpen && item && item !== "scissors"){
+        msg("你需要剪断绳子。");
+      } else msg("鸟笼已经空了。");
+      break;
+
+    case "altar":
+      if(state.gotManual){ msg("祭坛上方悬浮着「身法秘籍」的灵光，你已获得身法。"); break; }
+      {
+        const haveAll = SIX.every(t=>state.inventory.has(t));
+        if(haveAll){
+          SIX.forEach(t=>{ state.inventory.delete(t); state.placed.add(t); });
+          sfx.win();
+          give("manual");
+          state.gotManual = true;
+          updateInventory(); renderRoom();
+          msg("六件秘宝归位，祭坛迸发光芒，你获得了「身法秘籍」！📜","good");
+          setTimeout(startFinalShowdown, 1800);
+        } else {
+          const missing = SIX.filter(t=>!state.inventory.has(t));
+          const gotList = SIX.filter(t=>state.inventory.has(t)||state.placed.has(t));
+          msg("石台有六个凹槽，需集齐六件秘宝。已获 " + gotList.length + " 件：" +
+              (gotList.length?gotList.map(t=>ITEMS[t].name).join("、"):"无") +
+              (missing.length?"；还缺："+missing.map(t=>ITEMS[t].name).join("、"):""));
+        }
+      }
+      break;
+
+    default:
+      msg("……");
+  }
+  saveGame();
+}
+
+function bookClick(color){
+  if(state.flags.booksSolved){ msg("书架已经打开了。"); return; }
+  if(color === BOOK_ORDER[state.bookSeq]){
+    state.bookSeq++;
+    if(state.bookSeq === BOOK_ORDER.length){
+      state.flags.booksSolved = true;
+      sfx.open();
+      give("batknife");
+      msg("顺序正确！书架滑开，露出「蝙蝠刀」！🦇","good");
+    } else {
+      sfx.pick();
+      msg("第 " + state.bookSeq + " 本……");
+    }
+  } else {
+    state.bookSeq = 0;
+    sfx.err();
+    msg("顺序不对，书架重新锁上了。");
+  }
+  saveGame();
+}
+
+/* =====================================================================
+ *  密码输入弹窗
+ * ===================================================================== */
+function openCodePad(){
+  state.codeEntered = "";
+  const m = document.getElementById("modal");
+  m.innerHTML = `
+    <div class="card">
+      <h2>🗄️ 橱柜密码锁</h2>
+      <p>输入三位数密码（线索在电视与纸条上）。</p>
+      <div class="codeSlots" id="codeSlots">
+        <div class="codeSlot"></div><div class="codeSlot"></div><div class="codeSlot"></div>
+      </div>
+      <div class="keypad">
+        ${[1,2,3,4,5,6,7,8,9].map(n=>`<button class="key" data-k="${n}">${n}</button>`).join("")}
+        <button class="key wide" data-k="clear">清除</button>
+        <button class="key" data-k="0">0</button>
+        <button class="key" data-k="ok">确认</button>
+      </div>
+      <div class="hint" id="padHint"></div>
+      <div class="row"><button class="bigbtn" id="padClose">关闭</button></div>
+    </div>`;
+  m.classList.add("open");
+  renderCodeSlots();
+
+  m.querySelectorAll(".key").forEach(k=>{
+    k.onclick = ()=>{
+      const v = k.getAttribute("data-k");
+      if(v === "clear"){ state.codeEntered = ""; }
+      else if(v === "ok"){
+        if(state.codeEntered === CODE){
+          sfx.open();
+          closeModal();
+          state.flags.cabinetOpen = true;
+          give("betel");
+          msg("咔哒！柜门开了，你拿到了「和成天下槟榔」！🥜","good");
+        } else {
+          sfx.err();
+          state.codeEntered = "";
+          document.getElementById("padHint").textContent = "密码错误，再试试。";
+          renderCodeSlots();
+        }
+      } else if(v >= "0" && v <= "9"){
+        if(state.codeEntered.length < 3){ state.codeEntered += v; renderCodeSlots(); }
+      }
+    };
+  });
+  document.getElementById("padClose").onclick = closeModal;
+}
+function renderCodeSlots(){
+  const slots = document.querySelectorAll("#codeSlots .codeSlot");
+  const d = state.codeEntered.split("");
+  slots.forEach((s,i)=>{ s.textContent = d[i] || ""; });
+}
+function closeModal(){
+  document.getElementById("modal").classList.remove("open");
+  document.getElementById("modal").innerHTML = "";
+}
+
+/* =====================================================================
+ *  闪电狗机制
+ * ===================================================================== */
+let dogTimeout = null, dogCountdown = null;
+const NORMAL_DODGE_MS = 5000;
+
+function scheduleDog(){
+  if(state.over || state.gotManual || state.dogDefeated) return;
+  clearTimeout(dogTimeout);
+  const delay = state.flags.firstDog ? (26000 + Math.random()*22000) : 16000;
+  dogTimeout = setTimeout(()=>{
+    if(state.over || state.gotManual || state.dogDefeated) return;
+    state.flags.firstDog = true;
+    dogAttack();
+  }, delay);
+}
+
+function dogAttack(){
+  if(state.dogBusy || state.over) return;
+  state.dogBusy = true;
+  const overlay = document.getElementById("dogOverlay");
+  const title = document.getElementById("dogTitle");
+  const sub = document.getElementById("dogSub");
+  const timer = document.getElementById("dogTimer");
+  const btn = document.getElementById("dogBtn");
+  overlay.classList.add("show");
+  startAlarm();
+  sfx.warn();
+  document.getElementById("sceneWrap").classList.add("shake");
+
+  title.textContent = "⚡ 闪电狗来袭！";
+  sub.textContent = "快躲起来，否则会被抢走秘宝！";
+  btn.textContent = "🙈 躲起来！";
+  let left = 4;
+  timer.textContent = left;
+  btn.onclick = ()=>{
+    clearInterval(dogCountdown);
+    stopAlarm();
+    state.dogBusy = false;
+    overlay.classList.remove("show");
+    document.getElementById("sceneWrap").classList.remove("shake");
+    msg("好险！你及时躲了起来，闪电狗扑了个空。","good");
+    scheduleDog();
+  };
+  clearInterval(dogCountdown);
+  dogCountdown = setInterval(()=>{
+    left--;
+    if(left <= 0){
+      clearInterval(dogCountdown);
+      dogZap();
+    } else {
+      timer.textContent = left;
+      beep(300,.08,"square",.08);
+    }
+  }, 1000);
+}
+
+function dogZap(){
+  const overlay = document.getElementById("dogOverlay");
+  const wrap = document.getElementById("sceneWrap");
+  overlay.classList.remove("show");
+  stopAlarm();
+  wrap.classList.remove("shake");
+  wrap.classList.add("flash");
+  setTimeout(()=>wrap.classList.remove("flash"), 400);
+  sfx.zap();
+  state.dogBusy = false;
+
+  const stealable = SIX.filter(t=>state.inventory.has(t));
+  if(stealable.length){
+    const n = (stealable.length >= 5) ? Math.min(2, stealable.length) : 1;
+    const victims = stealable.slice().sort(()=>Math.random()-0.5).slice(0, n);
+    victims.forEach(v=>{ state.inventory.delete(v); state.stolen.push(v); });
+    updateInventory(); renderRoom();
+    msg("⚡ 闪电狗电晕了你，抢走了「"+victims.map(v=>ITEMS[v].name).join("、")+"」！去客厅的狗窝找回来吧。","warn");
+  } else {
+    msg("⚡ 闪电狗扑了个空——你身上没有可抢的秘宝，暂时安全。","warn");
+  }
+  saveGame();
+  scheduleDog();
+}
+
+function startFinalShowdown(){
+  // 停止普通狗计时，进入最终身法战
+  clearTimeout(dogTimeout);
+  openBattle();
+}
+
+/* =====================================================================
+ *  最终身法战（独立战斗界面）
+ * ===================================================================== */
+const BATTLE_DMG = {
+  scissors:16, bottle:20, betel:12, foot:15,
+  batknife:28, bailing:34, broom:9, key:6, flashlight:11
+};
+let battle = null;
+
+function battleWeapons(){
+  const w = [];
+  SIX.forEach(t=>{ if(state.placed.has(t) || state.inventory.has(t)) w.push(t); });
+  ["broom","key","flashlight"].forEach(t=>{ if(state.inventory.has(t)) w.push(t); });
+  return w;
+}
+function openBattle(){
+  state.dogBusy = true;
+  stopAlarm(); stopBgm();
+  battle = { dogHp:120, dogMax:120, bobHp:100, bobMax:100, phase:"player", dodging:false, dogTimer:null };
+  const b = document.getElementById("battle");
+  b.classList.add("show");
+  const wrap = document.getElementById("btItems");
+  wrap.innerHTML = "";
+  const items = battleWeapons();
+  if(items.length === 0){
+    wrap.innerHTML = '<span style="color:#b3a58f">没有可用道具……</span>';
+  }
+  items.forEach(id=>{
+    const it = ITEMS[id];
+    const btn = document.createElement("button");
+    btn.className = "btItem";
+    btn.innerHTML = (it.img ? '<img src="'+it.img+'" alt="">' : '<span style="font-size:22px">'+it.icon+'</span>') + '<span>'+it.name+'</span>';
+    btn.onclick = ()=>btAttack(id);
+    wrap.appendChild(btn);
+  });
+  const dodge = document.getElementById("btDodge");
+  dodge.disabled = !state.gotManual;
+  dodge.onclick = btDodge;
+  document.getElementById("btLog").innerHTML = "";
+  updateBattleHp();
+  btLog("⚔ 最终身法战！点击道具攻击闪电狗，它反击时点「闪避」躲开！");
+}
+function updateBattleHp(){
+  if(!battle) return;
+  document.getElementById("bobHp").style.width = Math.round(battle.bobHp/battle.bobMax*100)+"%";
+  document.getElementById("dogHp").style.width = Math.round(battle.dogHp/battle.dogMax*100)+"%";
+  document.getElementById("bobHpTxt").textContent = battle.bobHp+" / "+battle.bobMax;
+  document.getElementById("dogHpTxt").textContent = battle.dogHp+" / "+battle.dogMax;
+}
+function btLog(text, cls){
+  const el = document.getElementById("btLog");
+  const d = document.createElement("div");
+  d.textContent = text;
+  if(cls === "good") d.style.color = "#d8ffd8";
+  else if(cls === "warn") d.style.color = "#ffd9d0";
+  el.appendChild(d);
+  el.scrollTop = el.scrollHeight;
+}
+function flashFighter(id){
+  const el = document.getElementById(id);
+  if(el){ el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash"); }
+}
+function btAttack(id){
+  if(!battle || battle.phase !== "player") return;
+  const dmg = BATTLE_DMG[id] || 10;
+  battle.dogHp = Math.max(0, battle.dogHp - dmg);
+  sfx.use();
+  flashFighter("fDog");
+  btLog("你用「"+ITEMS[id].name+"」对闪电狗造成 "+dmg+" 点伤害！");
+  updateBattleHp();
+  if(battle.dogHp <= 0){ winBattle(); return; }
+  battle.phase = "dog";
+  battle.dodging = false;
+  document.getElementById("btDodge").disabled = false;
+  btLog("⚡ 闪电狗要反击了——快点「闪避」！","warn");
+  battle.dogTimer = setTimeout(btDogAttack, 1300);
+}
+function btDodge(){
+  if(!battle || battle.phase !== "dog" || battle.dodging) return;
+  battle.dodging = true;
+  document.getElementById("btDodge").disabled = true;
+  sfx.pick();
+  btLog("你凝神运起身法，准备闪避！","good");
+}
+function btDogAttack(){
+  if(!battle) return;
+  if(battle.dodging){
+    sfx.pick();
+    btLog("好险！你灵巧地躲开了闪电狗的攻击！","good");
+  } else {
+    battle.bobHp = Math.max(0, battle.bobHp - 18);
+    sfx.zap();
+    flashFighter("fBob");
+    btLog("闪电狗击中了你，损失 18 点生命！","warn");
+  }
+  updateBattleHp();
+  if(battle.bobHp <= 0){ loseBattle(); return; }
+  battle.phase = "player";
+  document.getElementById("btDodge").disabled = true;
+}
+function winBattle(){
+  state.dogDefeated = true;
+  state.dogBusy = false;
+  sfx.win();
+  if(battle && battle.dogTimer) clearTimeout(battle.dogTimer);
+  document.getElementById("battle").classList.remove("show");
+  battle = null;
+  updateTreasureCount();
+  saveGame();
+  msg("🎉 你打败了闪电狗！去客厅的大门逃出升天吧！","good");
+  startBgm();
+}
+function loseBattle(){
+  sfx.err();
+  if(battle && battle.dogTimer) clearTimeout(battle.dogTimer);
+  document.getElementById("battle").classList.remove("show");
+  battle = null;
+  state.dogBusy = false;
+  msg("你被闪电狗击倒了！重整旗鼓，再战！","warn");
+  setTimeout(openBattle, 900);
+}
+
+/* =====================================================================
+ *  胜利
+ * ===================================================================== */
+function winGame(){
+  if(state.over) return;
+  state.over = true;
+  clearSave();
+  stopBgm();
+  clearTimeout(dogTimeout);
+  sfx.win();
+  const m = document.getElementById("modal");
+  m.innerHTML = `
+    <div class="card">
+      <h1>🎉 逃出生天！</h1>
+      <h2>黄博妙妙屋 · 通关</h2>
+      <p style="font-size:60px;margin:8px 0;">🦸📜🏠</p>
+      <div class="story">
+        你集齐了七件 BOBO 秘宝，学会了失传的灵活身法。<br>
+        闪电狗再也不是对手，被一举打败。<br>
+        妙妙屋的大门缓缓打开，阳光洒了进来——<br>
+        <strong style="color:#f0c060">你，逃出升天！</strong>
+      </div>
+      <div class="row">
+        <button class="bigbtn gold" onclick="location.reload()">🔁 再玩一次</button>
+      </div>
+    </div>`;
+  m.classList.add("open");
+}
+
+/* =====================================================================
+ *  提示
+ * ===================================================================== */
+function showHint(){
+  const f = state.flags;
+  const has = id=>state.inventory.has(id)||state.placed.has(id);
+  let h;
+  if(!has("scissors")) h = "客厅的衣架上也许挂着什么。";
+  else if(!has("key")) h = "用折叠剪刀剪开沙发的线头。";
+  else if(!f.wardrobeOpen) h = "钥匙能打开卧室的衣柜。";
+  else if(!has("broom")) h = "卧室的角落里有一把扫把。";
+  else if(!has("bottle")) h = "厨房的高架上有东西，用扫把够下来。";
+  else if(!f.noteRead) h = "书房的书桌抽屉里有线索。";
+  else if(!has("betel")) h = "电视的 3★3 与纸条的 ★=7 组成橱柜密码。";
+  else if(!has("foot")) h = "手电筒能照亮床底。";
+  else if(!has("batknife")) h = "按《图鉴》的红→蓝→绿→黄点亮书架。";
+  else if(!f.posterCut) h = "用蝙蝠刀割开书房的海报。";
+  else if(!has("bailing")) h = "用剪刀剪断密室里吊鸟笼的绳子。";
+  else if(!state.gotManual) h = "把六件秘宝供奉到密室祭坛。";
+  else if(!state.dogDefeated) h = "用身法打败闪电狗，然后去客厅的大门。";
+  else h = "去客厅的大门，逃出升天！";
+  msg(h);
+}
+
+/* =====================================================================
+ *  启动
+ * ===================================================================== */
+function startGame(){
+  clearSave();
+  state.room = "living";
+  state.inventory = new Set();
+  state.placed = new Set();
+  state.stolen = [];
+  state.flags = {};
+  state.selected = null;
+  state.bookSeq = 0;
+  state.gotManual = false;
+  state.dogDefeated = false;
+  state.over = false;
+  state.dogBusy = false;
+  state.codeEntered = "";
+  delete ROOMS.study.nav.up;
+  document.getElementById("soundBtn").textContent = state.muted ? "🔇" : "🔊";
+  document.getElementById("musicBtn").textContent = state.musicOn ? "🎵" : "🔕";
+  closeModal();
+  hideStartScreen();
+  go("living");
+  msg("欢迎来到黄博妙妙屋。四处探索，集齐七件 BOBO 秘宝！");
+  startBgm();
+  scheduleDog();
+}
+
+function continueGame(){
+  if(!loadGame()){ startGame(); }
+}
+
+function showStartScreen(){
+  const el = document.getElementById("startScreen");
+  el.classList.remove("hidden");
+  const cb = document.getElementById("continueBtn");
+  if(cb){
+    const ok = hasSave();
+    cb.disabled = !ok;
+    cb.classList.toggle("disabled", !ok);
+  }
+}
+function hideStartScreen(){
+  document.getElementById("startScreen").classList.add("hidden");
+}
+
+function showHelp(){
+  const m = document.getElementById("modal");
+  m.innerHTML = `
+    <div class="card">
+      <h2>📖 操作说明</h2>
+      <div class="story" style="text-align:left;line-height:2;">
+        <strong style="color:#f0c060">🎯 目标</strong>：集齐 7 件 BOBO 秘宝，学会身法，打败闪电狗，逃出妙妙屋。<br><br>
+        <strong style="color:#f0c060">🖱 探索</strong>：点击房间里的物品进行探索；点击场景四周的箭头按钮在房间之间移动。<br><br>
+        <strong style="color:#f0c060">🎒 道具</strong>：点击下方背包选中物品，再点击场景中的目标来使用。<br><br>
+        <strong style="color:#ff7a5c">⚡ 闪电狗突袭</strong>：会随机来袭，倒计时结束前点击「躲起来！」；若秘宝被抢走，去客厅狗窝找回。<br><br>
+        <strong style="color:#8fb8ff">⚔ 最终身法战</strong>：集齐六件秘宝供奉祭坛获得「身法秘籍」后，进入独立战斗界面——点击道具攻击闪电狗，看准时机点「闪避」躲开它的反击，将它打败后从客厅大门逃生。
+      </div>
+      <div class="row"><button class="bigbtn" onclick="closeModal()">返回</button></div>
+    </div>`;
+  m.classList.add("open");
+}
+
+document.getElementById("hintBtn").onclick = showHint;
+document.getElementById("soundBtn").onclick = function(){
+  state.muted = !state.muted;
+  this.textContent = state.muted ? "🔇" : "🔊";
+};
+document.getElementById("musicBtn").onclick = function(){
+  state.musicOn = !state.musicOn;
+  this.textContent = state.musicOn ? "🎵" : "🔕";
+  if(state.musicOn){ startBgm(); } else { stopBgm(); }
+};
+
+/* 初始渲染 */
+showStartScreen();
+updateInventory();
+renderRoom();
+</script>
+</body>
+</html>
